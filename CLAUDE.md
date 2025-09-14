@@ -16,25 +16,28 @@ This script builds both the user shell and kernel, creates a disk image from fil
 
 ### Manual Build Steps
 ```bash
+# Create build directory
+mkdir -p build
+
 # Build user shell
-clang -std=c11 -O2 -g3 -Wall -Wextra --target=riscv32-unknown-elf -fno-stack-protector -ffreestanding -nostdlib -Wl,-Tuser.ld -Wl,-Map=shell.map -o shell.elf shell.c user.c common.c
-llvm-objcopy --set-section-flags .bss=alloc,contents -O binary shell.elf shell.bin
-llvm-objcopy -Ibinary -Oelf32-littleriscv shell.bin shell.bin.o
+clang -std=c11 -O2 -g3 -Wall -Wextra --target=riscv32-unknown-elf -fno-stack-protector -ffreestanding -nostdlib -Wl,-Tsrc/user.ld -Wl,-Map=build/shell.map -o build/shell.elf src/shell.c src/user.c src/common.c
+llvm-objcopy --set-section-flags .bss=alloc,contents -O binary build/shell.elf build/shell.bin
+llvm-objcopy -Ibinary -Oelf32-littleriscv build/shell.bin build/shell.bin.o
 
 # Build kernel
-clang -std=c11 -O2 -g3 -Wall -Wextra --target=riscv32-unknown-elf -fno-stack-protector -ffreestanding -nostdlib -Wl,-Tkernel.ld -Wl,-Map=kernel.map -o kernel.elf kernel.c common.c shell.bin.o
+clang -std=c11 -O2 -g3 -Wall -Wextra --target=riscv32-unknown-elf -fno-stack-protector -ffreestanding -nostdlib -Wl,-Tsrc/kernel.ld -Wl,-Map=build/kernel.map -o build/kernel.elf src/kernel.c src/common.c build/shell.bin.o
 
 # Create disk image
-cd disk && tar cf ../disk.tar --format=ustar *.txt
+cd disk && tar cf ../build/disk.tar --format=ustar *.txt
 ```
 
 ### QEMU Launch Command
 ```bash
-qemu-system-riscv32 -machine virt -bios default -nographic -serial mon:stdio --no-reboot \
-  -d unimp,guest_errors,int,cpu_reset -D qemu.log \
-  -drive id=drive0,file=disk.tar,format=raw,if=none \
+qemu-system-riscv32 -machine virt -bios firmware/opensbi-riscv32-generic-fw_dynamic.bin -nographic -serial mon:stdio --no-reboot \
+  -d unimp,guest_errors,int,cpu_reset -D build/qemu.log \
+  -drive id=drive0,file=build/disk.tar,format=raw,if=none \
   -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
-  -kernel kernel.elf
+  -kernel build/kernel.elf
 ```
 
 ## Architecture Overview
@@ -46,7 +49,7 @@ qemu-system-riscv32 -machine virt -bios default -nographic -serial mon:stdio --n
 
 ### Core Components
 
-**kernel.c**: Main kernel implementation containing:
+**src/kernel.c**: Main kernel implementation containing:
 - SBI (Supervisor Binary Interface) calls for basic I/O
 - Memory management with simple page allocator
 - Process management supporting up to 8 processes
@@ -55,11 +58,17 @@ qemu-system-riscv32 -machine virt -bios default -nographic -serial mon:stdio --n
 - System call handling (putchar, getchar, exit)
 - Context switching and cooperative scheduling
 
-**common.c/h**: Shared utilities including printf, string operations, and memory functions
+**src/common.c/h**: Shared utilities including printf, string operations, and memory functions
 
-**user.c/h**: User-space runtime providing system call wrappers and process entry point
+**src/user.c/h**: User-space runtime providing system call wrappers and process entry point
 
-**shell.c**: Simple interactive shell supporting "hello" and "exit" commands
+**src/shell.c**: Simple interactive shell supporting "hello" and "exit" commands
+
+### File Structure
+- **src/**: All source code files (.c, .h, .ld)
+- **disk/**: Files to be included in the TAR filesystem (hello.txt, meow.txt)
+- **build/**: Generated build artifacts (created by run.sh)
+- **firmware/**: OpenSBI firmware binary for QEMU
 
 ### Key Design Patterns
 
