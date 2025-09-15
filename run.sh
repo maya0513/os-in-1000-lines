@@ -20,7 +20,7 @@ $OBJCOPY -Ibinary -Oelf32-littleriscv build/shell.bin build/shell.bin.o
 
 # カーネルをビルド
 $CC $CFLAGS -Wl,-Tsrc/kernel.ld -Wl,-Map=build/kernel.map -o build/kernel.elf \
-  src/kernel.c src/common.c build/shell.bin.o
+  src/kernel.c src/common.c src/sbi.c src/memory.c src/virtio.c src/fs.c src/process.c src/syscall.c build/shell.bin.o
 
 (cd disk && tar cf ../build/disk.tar --format=ustar *.txt)
 

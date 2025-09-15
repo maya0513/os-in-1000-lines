@@ -58,6 +58,11 @@
 #define VIRTIO_BLK_T_IN 0
 #define VIRTIO_BLK_T_OUT 1
 
+// Magic numbers and constants
+#define VIRTIO_MAGIC_VALUE 0x74726976
+#define DELAY_COUNT 30000000
+#define ENTER_KEY '\r'
+
 #define FILES_MAX 2
 #define DISK_MAX_SIZE align_up(sizeof(struct file) * FILES_MAX, SECTOR_SIZE)
 
@@ -216,3 +221,56 @@ struct process
     {                                                                     \
     }                                                                     \
   } while (0)
+
+// 関数宣言 - SBI
+struct sbiret sbi_call(long arg0, long arg1, long arg2, long arg3, long arg4, long arg5, long fid, long eid);
+void putchar(char ch);
+long getchar(void);
+void delay(void);
+
+// 関数宣言 - Memory management
+paddr_t alloc_pages(uint32_t n);
+void map_page(uint32_t *table1, uint32_t vaddr, paddr_t paddr, uint32_t flags);
+
+// 関数宣言 - VirtIO
+uint32_t virtio_reg_read32(unsigned offset);
+uint64_t virtio_reg_read64(unsigned offset);
+void virtio_reg_write32(unsigned offset, uint32_t value);
+void virtio_reg_fetch_and_or32(unsigned offset, uint32_t value);
+void virtq_kick(struct virtio_virtq *vq, int desc_index);
+bool virtq_is_busy(struct virtio_virtq *vq);
+struct virtio_virtq *virtq_init(unsigned index);
+void virtio_blk_init(void);
+void read_write_disk(void *buf, unsigned sector, int is_write);
+
+// 関数宣言 - File system
+int oct2int(char *oct, int len);
+struct file *fs_lookup(const char *filename);
+void fs_flush(void);
+void fs_init(void);
+
+// 関数宣言 - Process management
+void switch_context(uint32_t *prev_sp, uint32_t *next_sp);
+void user_entry(void);
+struct process *create_process(const void *image, size_t image_size);
+void yield(void);
+
+// 関数宣言 - System calls
+void handle_syscall(struct trap_frame *f);
+
+// 関数宣言 - Trap handling
+void handle_trap(struct trap_frame *f);
+void kernel_entry(void);
+
+// グローバル変数宣言
+extern struct process procs[PROCS_MAX];
+extern struct process *proc_a;
+extern struct process *proc_b;
+extern struct process *current_proc;
+extern struct process *idle_proc;
+extern struct virtio_virtq *blk_request_vq;
+extern struct virtio_blk_req *blk_req;
+extern paddr_t blk_req_paddr;
+extern uint64_t blk_capacity;
+extern struct file files[FILES_MAX];
+extern uint8_t disk[DISK_MAX_SIZE];

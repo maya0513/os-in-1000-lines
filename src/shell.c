@@ -1,5 +1,8 @@
 #include "user.h"
 
+// 定数定義のみ
+#define ENTER_KEY '\r'
+
 void main(void)
 {
   while (1)
@@ -16,7 +19,7 @@ void main(void)
         printf("command line too long\n");
         goto prompt;
       }
-      else if (ch == '\r')
+      else if (ch == ENTER_KEY)
       {
         printf("\n");
         cmdline[i] = '\0';
